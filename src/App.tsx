@@ -88,7 +88,7 @@ export default function App() {
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       const base64Data = image.split(',')[1];
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-1.5-flash",
         contents: {
           parts: [
             { text: "Bu görseli 10 kök değer çerçevesinde kısaca analiz et." },
