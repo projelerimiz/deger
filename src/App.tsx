@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
+// Uzman talimatları
 const ANALYSIS_INSTRUCTION = `Görsel analiz ve değerler eğitimi uzmanısın. Görseli şu 10 kök değer (Adalet, Dostluk, Dürüstlük, Öz Denetim, Sabır, Saygı, Sevgi, Sorumluluk, Vatanseverlik, Yardımseverlik) üzerinden analiz et:
 1. GÖRSEL ÖZETİ: Karakterleri ve olayı kısaca anlat.
 2. DEĞER TESPİTİ: Hangi değerlerin olduğunu veya eksik olduğunu belirt.
@@ -39,18 +40,19 @@ const ROOT_VALUES = [
 ];
 
 export default function App() {
-  // Left Side States
+  // Sol Panel (Analiz) State'leri
   const [image, setImage] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<string | null>(null);
   const [isAnalysisLoading, setIsAnalysisLoading] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Right Side States
+  // Sağ Panel (Çizim Fikri) State'leri
   const [selectedValues, setSelectedValues] = useState<string[]>([]);
   const [drawingAdvice, setDrawingAdvice] = useState<string | null>(null);
   const [isAdviceLoading, setIsAdviceLoading] = useState(false);
 
+  // Görsel Yükleme İşlemi
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -77,20 +79,25 @@ export default function App() {
     );
   };
 
+  // --- ANA FONKSİYON: GÖRSEL ANALİZİ ---
   const analyzeImage = async () => {
     if (!image) return;
     setIsAnalysisLoading(true);
     setAnalysisError(null);
     try {
-      // API Key handling with Vite environment variable
-      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-      const ai = new GoogleGenAI({ apiKey });
+      // vite.config.ts içindeki 'define' ayarına uygun olarak anahtarı alıyoruz
+      const apiKey = process.env.GEMINI_API_KEY; 
       
+      if (!apiKey) {
+        throw new Error("API Anahtarı bulunamadı! Vercel Environment Variables ayarlarını kontrol edin.");
+      }
+
+      const ai = new GoogleGenAI({ apiKey });
       const base64Data = image.split(',')[1];
       
-      // Fixed: Using "models/gemini-1.5-flash" to avoid 404 and get 1500 daily quota
+      // model isminin başına 'models/' eklemek 404 hatasını çözer
       const response = await ai.models.generateContent({
-        model: "models/gemini-1.5-flash",
+        model: "models/gemini-1.5-flash", 
         contents: [
           {
             role: "user",
@@ -106,20 +113,22 @@ export default function App() {
       setAnalysis(response.text || "Analiz yapılamadı.");
     } catch (err: any) {
       console.error("Gemini API Error:", err);
-      setAnalysisError("Kota dolmuş veya model bulunamamış olabilir. Lütfen 1 dakika bekleyip tekrar deneyin.");
+      // Hata mesajını kullanıcıya gösteriyoruz
+      setAnalysisError(err.message || "Bir hata oluştu. Lütfen 1 dakika bekleyip tekrar deneyin.");
     } finally {
       setIsAnalysisLoading(false);
     }
   };
 
+  // --- ANA FONKSİYON: ÇİZİM FİKRİ OLUŞTURMA ---
   const generateDrawingAdvice = async () => {
     if (selectedValues.length === 0) return;
     setIsAdviceLoading(true);
     try {
-      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      const apiKey = process.env.GEMINI_API_KEY;
       const ai = new GoogleGenAI({ apiKey });
 
-      // Fixed: Changed from gemini-3-flash-preview (20 limit) to gemini-1.5-flash (1500 limit)
+      // gemini-3-flash-preview (20 limit) yerine gemini-1.5-flash (1500 limit) kullanıyoruz
       const response = await ai.models.generateContent({
         model: "models/gemini-1.5-flash",
         contents: [
@@ -132,8 +141,8 @@ export default function App() {
       });
       
       setDrawingAdvice(response.text || "Tavsiye oluşturulamadı.");
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      console.error("Fikir oluşturma hatası:", err);
     } finally {
       setIsAdviceLoading(false);
     }
@@ -160,8 +169,8 @@ export default function App() {
       <main className="max-w-7xl mx-auto px-4 py-8">
         <div className="flex flex-col lg:flex-row items-stretch gap-0 bg-white rounded-[40px] shadow-2xl border border-orange-100 overflow-hidden min-h-[600px]">
           
-          {/* LEFT SIDE: ANALYSIS */}
-          <div className="w-full lg:w-1/2 p-8 md:p-10 flex flex-col">
+          {/* SOL TARAF: ANALİZ BÖLÜMÜ */}
+          <div className="w-full lg:w-1/2 p-8 md:p-10 flex flex-col border-r border-orange-50">
             <div className="flex items-center gap-3 mb-8">
               <div className="bg-orange-100 p-2.5 rounded-2xl">
                 <Search className="text-orange-600 w-6 h-6" />
@@ -183,17 +192,17 @@ export default function App() {
                 </motion.div>
               ) : (
                 <div className="space-y-6">
-                  <div className="relative group rounded-3xl overflow-hidden border-4 border-orange-50 shadow-inner">
+                  <div className="relative group rounded-3xl overflow-hidden border-4 border-orange-50 shadow-inner bg-gray-50">
                     <button onClick={clearImage} className="absolute top-4 right-4 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full transition-colors z-10">
                       <X className="w-4 h-4" />
                     </button>
-                    <img src={image} alt="Preview" className="w-full h-auto max-h-[300px] object-contain bg-gray-50" />
+                    <img src={image} alt="Önizleme" className="w-full h-auto max-h-[350px] object-contain mx-auto" />
                   </div>
                   
                   {!analysis && !isAnalysisLoading && (
                     <button onClick={analyzeImage} className="w-full py-4 bg-orange-500 hover:bg-orange-600 text-white rounded-2xl font-bold shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2">
                       <Search className="w-5 h-5" />
-                      Analiz Et
+                      Değer Analizi Yap
                     </button>
                   )}
 
@@ -201,7 +210,7 @@ export default function App() {
                     {isAnalysisLoading && (
                       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="py-8 flex flex-col items-center gap-4">
                         <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
-                        <p className="text-orange-600 font-medium">İnceleniyor...</p>
+                        <p className="text-orange-600 font-medium tracking-wide">Yapay Zeka İnceliyor...</p>
                       </motion.div>
                     )}
                     {analysis && (
@@ -210,7 +219,7 @@ export default function App() {
                       </motion.div>
                     )}
                     {analysisError && (
-                      <div className="p-4 bg-red-50 text-red-600 rounded-2xl text-sm text-center border border-red-100">
+                      <div className="p-4 bg-red-50 text-red-600 rounded-2xl text-sm text-center border border-red-100 font-medium">
                         {analysisError}
                       </div>
                     )}
@@ -220,10 +229,7 @@ export default function App() {
             </div>
           </div>
 
-          {/* VERTICAL DIVIDER */}
-          <div className="hidden lg:block w-px bg-orange-100 self-stretch my-10" />
-
-          {/* RIGHT SIDE: DRAWING ADVICE */}
+          {/* SAĞ TARAF: ÇİZİM FİKRİ BÖLÜMÜ */}
           <div className="w-full lg:w-1/2 p-8 md:p-10 flex flex-col bg-blue-50/20">
             <div className="flex items-center gap-3 mb-8">
               <div className="bg-blue-100 p-2.5 rounded-2xl">
@@ -231,7 +237,7 @@ export default function App() {
               </div>
               <div>
                 <h2 className="text-xl font-bold text-gray-800">Çizim Fikri Al</h2>
-                <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Kendi Karikatürün</p>
+                <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Yaratıcı Senaryo</p>
               </div>
             </div>
 
@@ -239,14 +245,14 @@ export default function App() {
               <div className="bg-white p-6 rounded-3xl border border-blue-100 shadow-sm">
                 <div className="flex items-center gap-2 mb-4 text-blue-600">
                   <Info className="w-4 h-4" />
-                  <p className="text-xs font-bold uppercase tracking-widest">Değerleri Seç</p>
+                  <p className="text-xs font-bold uppercase tracking-widest">Kök Değerleri Seç</p>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   {ROOT_VALUES.map((val) => (
                     <button
                       key={val}
                       onClick={() => toggleValue(val)}
-                      className={`flex items-center gap-2 p-2 rounded-xl border-2 transition-all text-left ${
+                      className={`flex items-center gap-2 p-2.5 rounded-xl border-2 transition-all text-left ${
                         selectedValues.includes(val)
                           ? 'border-blue-500 bg-blue-50 text-blue-700'
                           : 'border-gray-50 bg-gray-50 text-gray-500 hover:border-blue-100'
@@ -299,7 +305,7 @@ export default function App() {
       </main>
 
       <footer className="py-8 px-4 text-center">
-        <p className="text-gray-400 text-xs font-medium">
+        <p className="text-gray-400 text-xs font-medium tracking-widest uppercase">
           Değerler Atölyesi &copy; 2026
         </p>
       </footer>
