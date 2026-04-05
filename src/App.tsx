@@ -8,10 +8,7 @@ import { GoogleGenAI } from "@google/genai";
 import Markdown from 'react-markdown';
 import { 
   Upload, 
-  Image as ImageIcon, 
   Search, 
-  Heart, 
-  MessageCircle, 
   Lightbulb, 
   Loader2,
   X,
@@ -85,22 +82,31 @@ export default function App() {
     setIsAnalysisLoading(true);
     setAnalysisError(null);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      // API Key handling with Vite environment variable
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      const ai = new GoogleGenAI({ apiKey });
+      
       const base64Data = image.split(',')[1];
+      
+      // Fixed: Using "models/gemini-1.5-flash" to avoid 404 and get 1500 daily quota
       const response = await ai.models.generateContent({
-        model: "gemini-1.5-flash",
-        contents: {
-          parts: [
-            { text: "Bu görseli 10 kök değer çerçevesinde kısaca analiz et." },
-            { inlineData: { data: base64Data, mimeType: "image/jpeg" } }
-          ]
-        },
+        model: "models/gemini-1.5-flash",
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { text: "Bu görseli 10 kök değer çerçevesinde kısaca analiz et." },
+              { inlineData: { data: base64Data, mimeType: "image/jpeg" } }
+            ]
+          }
+        ],
         config: { systemInstruction: ANALYSIS_INSTRUCTION }
       });
+      
       setAnalysis(response.text || "Analiz yapılamadı.");
     } catch (err: any) {
       console.error("Gemini API Error:", err);
-      setAnalysisError(err.message || "Bir hata oluştu. API anahtarınızı kontrol edin.");
+      setAnalysisError("Kota dolmuş veya model bulunamamış olabilir. Lütfen 1 dakika bekleyip tekrar deneyin.");
     } finally {
       setIsAnalysisLoading(false);
     }
@@ -110,12 +116,21 @@ export default function App() {
     if (selectedValues.length === 0) return;
     setIsAdviceLoading(true);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      const ai = new GoogleGenAI({ apiKey });
+
+      // Fixed: Changed from gemini-3-flash-preview (20 limit) to gemini-1.5-flash (1500 limit)
       const response = await ai.models.generateContent({
-        model: "models/gemini-3-flash-preview",
-        contents: `Değerler: ${selectedValues.join(', ')}. Kısa bir çizim fikri ver.`,
+        model: "models/gemini-1.5-flash",
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: `Değerler: ${selectedValues.join(', ')}. Kısa bir çizim fikri ver.` }]
+          }
+        ],
         config: { systemInstruction: DRAWING_ADVICE_INSTRUCTION }
       });
+      
       setDrawingAdvice(response.text || "Tavsiye oluşturulamadı.");
     } catch (err) {
       console.error(err);
