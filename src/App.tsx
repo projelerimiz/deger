@@ -112,7 +112,7 @@ export default function App() {
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "models/gemini-3-flash-preview",
         contents: `Değerler: ${selectedValues.join(', ')}. Kısa bir çizim fikri ver.`,
         config: { systemInstruction: DRAWING_ADVICE_INSTRUCTION }
       });
